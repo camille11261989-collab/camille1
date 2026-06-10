@@ -3,6 +3,14 @@ import portrait from "../assets/camille-portrait-office-optimized.jpg";
 import { coverage, metrics } from "../data/site";
 import SectionHeader from "./SectionHeader";
 
+const philosophyLines = [
+  "我不習慣只用單一指標判斷市場",
+  "比起預測漲跌，我更重視資金流向、估值位置、風險報酬比與市場情緒是否一致",
+  "市場不一定每天都有答案，但每一次價格變化背後，都有資金與人性的痕跡"
+];
+
+const philosophyMeta = ["Method", "Risk", "Signal"];
+
 export default function About() {
   return (
     <section id="about" className="relative border-t border-white/[0.08] bg-ink-950 py-14 md:py-16 xl:py-20 2xl:py-24">
@@ -70,6 +78,66 @@ export default function About() {
                 );
               })}
             </div>
+
+            <motion.article
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-90px" }}
+              transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
+              className="interactive-surface group relative mt-5 overflow-hidden rounded-md border border-white/[0.09] bg-white/[0.025] p-4 shadow-line transition-[border-color,box-shadow,background] duration-300 hover:border-signal-cyan/30 hover:bg-white/[0.035] hover:shadow-[0_20px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] md:mt-6 md:p-5"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-fine-grid bg-[length:48px_48px] opacity-[0.16]" />
+              <div className="pointer-events-none absolute left-0 top-0 h-px w-24 bg-gradient-to-r from-signal-cyan/60 to-transparent opacity-80 transition-all duration-500 group-hover:w-36" />
+              <div className="pointer-events-none absolute bottom-0 right-0 h-px w-20 bg-gradient-to-l from-signal-amber/45 to-transparent" />
+              <span className="pointer-events-none absolute right-4 top-4 h-1.5 w-1.5 rounded-full bg-signal-cyan/70 shadow-[0_0_18px_rgba(123,200,216,0.28)]" />
+
+              <div className="relative">
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.08, duration: 0.45, ease: "easeOut" }}
+                  className="font-plex text-[11px] uppercase tracking-[0.24em] text-signal-cyan/80"
+                >
+                  Market Philosophy
+                </motion.p>
+                <motion.h3
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.14, duration: 0.5, ease: "easeOut" }}
+                  className="mt-2 font-plex text-xl font-medium text-white md:text-2xl"
+                >
+                  我如何看市場
+                </motion.h3>
+
+                <div className="mt-4 space-y-2.5 border-l border-signal-cyan/20 pl-4 text-sm leading-6 text-steel-300 md:max-w-3xl md:text-[15px] md:leading-7">
+                  {philosophyLines.map((line, index) => (
+                    <motion.p
+                      key={line}
+                      initial={{ opacity: 0, y: 8 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.2 + index * 0.08, duration: 0.5, ease: "easeOut" }}
+                      className={index === 0 ? "text-white" : ""}
+                    >
+                      {line}
+                    </motion.p>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {philosophyMeta.map((label) => (
+                    <span
+                      key={label}
+                      className="rounded border border-white/[0.08] bg-ink-900/60 px-2.5 py-1 font-plex text-[10px] uppercase tracking-[0.18em] text-steel-500 transition-colors duration-300 group-hover:border-signal-cyan/20 group-hover:text-steel-300"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </motion.article>
           </div>
         </div>
       </div>
