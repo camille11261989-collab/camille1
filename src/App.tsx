@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import About from "./components/About";
 import Contact from "./components/Contact";
 import CursorExperience from "./components/CursorExperience";
@@ -20,6 +21,7 @@ export default function App() {
         <FeaturedInsights />
         <Contact />
       </main>
+      <Analytics />
     </div>
   );
 }
