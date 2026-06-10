@@ -52,9 +52,6 @@ export default function Expertise() {
               <p className="font-plex text-xs uppercase tracking-[0.2em] text-signal-amber">Selected Track Record</p>
               <h3 className="mt-2 font-plex text-2xl font-medium text-white">專業軌跡</h3>
             </div>
-            <p className="max-w-lg text-sm leading-7 text-steel-500">
-              保留最能代表定位的三個面向，讓訪客快速理解專業深度與實務場景
-            </p>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">
