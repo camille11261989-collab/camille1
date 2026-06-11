@@ -1,29 +1,56 @@
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const tradingViewSymbols = [
   { proName: "INDEX:TAIEX", title: "台股加權" },
-  { proName: "HSI:HSTECH", title: "恒生科技" }
+  { proName: "AMEX:SPY", title: "S&P 500 ETF" },
+  { proName: "HSI:HSI", title: "恒生指數" },
+  { proName: "HSI:HSTECH", title: "恒生科技" },
+  { proName: "NASDAQ:QQQ", title: "Nasdaq ETF" },
+  { proName: "AMEX:EWJ", title: "日本市場 ETF" },
+  { proName: "AMEX:EWY", title: "韓國市場 ETF" }
 ];
 
 function TradingViewTickerTape() {
   const [hasError, setHasError] = useState(false);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
 
-  const embedUrl = useMemo(() => {
-    const config = encodeURIComponent(
-      JSON.stringify({
-        symbols: tradingViewSymbols,
-        showSymbolLogo: false,
-        isTransparent: false,
-        displayMode: "regular",
-        colorTheme: "dark",
-        width: "100%",
-        height: 42,
-        locale: "zh_TW"
-      })
-    );
+  useEffect(() => {
+    const target = widgetRef.current;
+    if (!target) return undefined;
+    if (target.dataset.tvWidgetMounted === "true") return undefined;
 
-    return `https://www.tradingview-widget.com/embed-widget/ticker-tape/?locale=zh_TW#${config}`;
+    setHasError(false);
+    target.dataset.tvWidgetMounted = "true";
+    target.innerHTML = '<div class="tradingview-widget-container__widget min-h-[46px]"></div>';
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
+    script.async = true;
+    script.type = "text/javascript";
+    script.innerHTML = JSON.stringify({
+      symbols: tradingViewSymbols,
+      showSymbolLogo: false,
+      isTransparent: false,
+      displayMode: "adaptive",
+      colorTheme: "dark",
+      width: "100%",
+      height: 46,
+      locale: "zh_TW"
+    });
+    script.onerror = () => setHasError(true);
+
+    const loadTimer = window.setTimeout(() => {
+      if (!target.querySelector("iframe")) {
+        setHasError(true);
+      }
+    }, 12000);
+
+    target.appendChild(script);
+
+    return () => {
+      window.clearTimeout(loadTimer);
+    };
   }, []);
 
   if (hasError) {
@@ -36,13 +63,9 @@ function TradingViewTickerTape() {
 
   return (
     <div className="market-ticker-scroll">
-      <iframe
-        title="TradingView 跨市場報價觀察"
-        src={embedUrl}
-        className="market-widget-shell h-[50px] min-h-[50px] w-full min-w-[640px] rounded border border-white/[0.08] bg-ink-950/55"
-        loading="lazy"
-        onError={() => setHasError(true)}
-      />
+      <div className="market-widget-shell h-[52px] min-h-[52px] w-full min-w-[1180px] rounded border border-white/[0.08] bg-ink-950/55">
+        <div ref={widgetRef} className="tradingview-widget-container min-h-[46px]" />
+      </div>
     </div>
   );
 }
@@ -70,7 +93,7 @@ export default function MarketTicker() {
                   Market Framework
                 </p>
                 <p className="mt-0.5 text-balance font-plex text-[12px] font-medium leading-5 text-steel-200 md:text-[13px]">
-                  我不只看單一市場，而是從美股、港股與台股之間，觀察資金流向、估值位置與市場情緒的變化
+                  透過不同市場之間的變化 觀察資金流向估值位置與市場情緒
                 </p>
               </div>
               <div className="md:text-right">
