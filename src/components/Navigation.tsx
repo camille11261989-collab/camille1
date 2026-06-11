@@ -2,6 +2,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { navItems } from "../data/site";
+import { trackEvent } from "../services/analytics";
 
 export default function Navigation() {
   const [open, setOpen] = useState(false);
@@ -31,6 +32,10 @@ export default function Navigation() {
             <a
               key={item.id}
               href={`#${item.id}`}
+              onClick={() => {
+                if (item.id === "contact") trackEvent("click_contact", { placement: "desktop_navigation" });
+                if (item.id === "insights") trackEvent("click_market_note", { placement: "desktop_navigation" });
+              }}
               className="text-sm text-steel-300 transition hover:text-white"
             >
               {item.label}
@@ -38,6 +43,7 @@ export default function Navigation() {
           ))}
           <a
             href="https://line.me/ti/p/abT9W9cEaE"
+            onClick={() => trackEvent("click_line", { placement: "desktop_navigation" })}
             className="rounded border border-white/[0.12] bg-white px-4 py-2 text-sm font-medium text-ink-950 transition hover:bg-steel-300"
           >
             LINE 聯繫
@@ -63,7 +69,11 @@ export default function Navigation() {
               <a
                 key={item.id}
                 href={`#${item.id}`}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (item.id === "contact") trackEvent("click_contact", { placement: "mobile_navigation" });
+                  if (item.id === "insights") trackEvent("click_market_note", { placement: "mobile_navigation" });
+                  setOpen(false);
+                }}
                 className="rounded px-3 py-3 text-sm text-steel-300 transition hover:bg-white/5 hover:text-white"
               >
                 {item.label}
@@ -71,7 +81,10 @@ export default function Navigation() {
             ))}
             <a
               href="https://line.me/ti/p/abT9W9cEaE"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                trackEvent("click_line", { placement: "mobile_navigation" });
+                setOpen(false);
+              }}
               className="mt-2 rounded border border-white/[0.12] bg-white px-4 py-3 text-center text-sm font-medium text-ink-950"
             >
               LINE 聯繫

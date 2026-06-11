@@ -2,6 +2,7 @@ import { ArrowRight, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { intelligenceSlides, marketRadarItems } from "../data/site";
+import { trackEvent } from "../services/analytics";
 import { loadMarketRadar } from "../services/marketRadar";
 import MarketFilm from "./MarketFilm";
 
@@ -96,12 +97,14 @@ export default function Hero() {
           >
             <a
               href="#insights"
+              onClick={() => trackEvent("click_market_note", { placement: "hero_primary" })}
               className="inline-flex items-center justify-center gap-3 rounded border border-white/[0.12] bg-white px-5 py-3 text-sm font-semibold text-ink-950 transition hover:bg-steel-300"
             >
               查看精選觀點 <ArrowRight size={17} />
             </a>
             <a
               href="#contact"
+              onClick={() => trackEvent("click_contact", { placement: "hero_secondary" })}
               className="inline-flex items-center justify-center gap-3 rounded border border-white/[0.12] bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               聯繫交流 <MessageSquare size={17} />

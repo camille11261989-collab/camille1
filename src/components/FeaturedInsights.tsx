@@ -2,6 +2,7 @@ import { ArrowUpRight, X } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { insightItems } from "../data/site";
+import { trackEvent } from "../services/analytics";
 import SectionHeader from "./SectionHeader";
 
 export default function FeaturedInsights() {
@@ -46,7 +47,13 @@ export default function FeaturedInsights() {
                   whileHover={{ x: 8 }}
                   whileTap={{ scale: 0.992 }}
                   transition={{ delay: index * 0.06, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => setActiveInsight(item)}
+                  onClick={() => {
+                    trackEvent("click_market_note", {
+                      placement: "featured_insights",
+                      title: item.title
+                    });
+                    setActiveInsight(item);
+                  }}
                   className="data-card insight-row group grid w-full gap-4 py-6 text-left md:grid-cols-[0.16fr_1fr_0.22fr] md:items-start md:gap-5 md:py-8"
                 >
                   <div>

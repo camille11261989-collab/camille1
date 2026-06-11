@@ -1,5 +1,6 @@
 import { ArrowUpRight, Mail } from "lucide-react";
 import { motion } from "framer-motion";
+import { trackEvent } from "../services/analytics";
 
 const contactActions = [
   {
@@ -61,6 +62,12 @@ export default function Contact() {
                 <a
                   key={action.label}
                   href={action.href}
+                  onClick={() =>
+                    trackEvent(action.label.includes("LINE") ? "click_line" : "click_contact", {
+                      placement: "contact_section",
+                      label: action.label
+                    })
+                  }
                   className="data-card group flex min-h-32 flex-col justify-between rounded-md border border-white/10 bg-white/[0.035] p-5 text-white transition hover:border-signal-cyan/40 hover:bg-white/[0.06]"
                 >
                   <div className="flex items-start justify-between gap-5">

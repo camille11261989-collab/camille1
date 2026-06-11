@@ -1,8 +1,18 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/admin/analytics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    }
+  ],
   "functions": {
-    "api/market-radar.js": {
+    "api/**/*.js": {
       "maxDuration": 10
     }
   }
