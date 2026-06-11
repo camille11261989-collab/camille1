@@ -2,6 +2,8 @@ export type ConnectionState = {
   connected: boolean;
   status?: string;
   message?: string;
+  missing?: string[];
+  details?: string;
   updatedAt?: string;
 };
 
@@ -28,6 +30,8 @@ export type AnalyticsSources = ConnectionState & {
   channels?: Array<{ label: string; users: number }>;
   devices?: Array<{ label: string; users: number }>;
   countries?: Array<{ label: string; users: number }>;
+  deviceModels?: Array<{ label: string; users: number }>;
+  cities?: Array<{ label: string; users: number }>;
 };
 
 export type AnalyticsEvents = ConnectionState & {

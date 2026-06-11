@@ -1,5 +1,5 @@
 import { requireAdmin } from "../../server/utils/adminAuth.js";
-import { dimensionValue, isGaConfigured, metricValue, runReport } from "../../server/utils/ga4.js";
+import { dimensionValue, gaErrorPayload, getGaSetupStatus, metricValue, runReport } from "../../server/utils/ga4.js";
 import { analyticsNotConnected, methodNotAllowed, sendJson } from "../../server/utils/http.js";
 
 export default async function handler(req, res) {
@@ -10,8 +10,9 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  if (!isGaConfigured()) {
-    analyticsNotConnected(res);
+  const setup = getGaSetupStatus();
+  if (!setup.configured) {
+    analyticsNotConnected(res, setup.message, setup);
     return;
   }
 
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
       dimensions: [{ name: "pagePathPlusQueryString" }, { name: "pageTitle" }],
       metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
-      limit: 8
+      limit: 10
     });
 
     sendJson(
@@ -29,6 +30,8 @@ export default async function handler(req, res) {
       200,
       {
         connected: true,
+        status: report.rows?.length ? "connected" : "no_data",
+        message: report.rows?.length ? "正常連接" : "GA4 查無資料",
         updatedAt: new Date().toISOString(),
         items:
           report.rows?.map((row) => ({
@@ -42,6 +45,7 @@ export default async function handler(req, res) {
     );
   } catch (error) {
     console.error("analytics pages failed", error);
-    analyticsNotConnected(res, "資料更新中");
+    const payload = gaErrorPayload(error);
+    analyticsNotConnected(res, payload.message, payload);
   }
 }

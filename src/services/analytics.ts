@@ -26,27 +26,38 @@ export function initAnalytics() {
       window.dataLayer?.push(args);
     };
 
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.appendChild(script);
+  if (!document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${measurementId}"]`)) {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+    script.onerror = () => console.warn("GA4 script failed to load");
+    document.head.appendChild(script);
+  }
 
-  window.gtag("js", new Date());
-  window.gtag("config", measurementId, {
-    anonymize_ip: true,
-    page_title: document.title,
-    page_location: window.location.href
-  });
+  try {
+    window.gtag("js", new Date());
+    window.gtag("config", measurementId, {
+      anonymize_ip: true,
+      page_title: document.title,
+      page_location: window.location.href
+    });
+  } catch (error) {
+    console.warn("GA4 initialization failed", error);
+  }
 }
 
 export function trackEvent(name: string, params: AnalyticsParams = {}) {
   if (!measurementId || typeof window === "undefined") return;
   initAnalytics();
-  window.gtag?.("event", name, {
-    event_category: "site_engagement",
-    page_path: window.location.pathname + window.location.hash,
-    ...params
-  });
+  try {
+    window.gtag?.("event", name, {
+      event_category: "site_engagement",
+      page_path: window.location.pathname + window.location.hash,
+      ...params
+    });
+  } catch (error) {
+    console.warn("GA4 event tracking failed", error);
+  }
 }
 
 export function useEngagementTracking(enabled = true) {

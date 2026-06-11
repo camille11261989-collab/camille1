@@ -32,10 +32,32 @@ function formatDuration(seconds?: number) {
   return minutes > 0 ? `${minutes}分${rest}秒` : `${rest}秒`;
 }
 
-function StatusNotice({ message = fallbackMessage }: { message?: string }) {
+function StatusNotice({
+  message = fallbackMessage,
+  status,
+  missing = [],
+  details,
+  tone = "warning"
+}: {
+  message?: string;
+  status?: string;
+  missing?: string[];
+  details?: string;
+  tone?: "warning" | "success";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-signal-cyan/20 bg-signal-cyan/[0.04] text-signal-cyan"
+      : "border-signal-amber/20 bg-signal-amber/[0.04] text-signal-amber";
+
   return (
-    <div className="rounded-md border border-signal-amber/20 bg-signal-amber/[0.04] px-4 py-3 text-sm leading-6 text-signal-amber">
-      {message}
+    <div className={`rounded-md border px-4 py-3 text-sm leading-6 ${toneClass}`}>
+      <div className="flex flex-col gap-1">
+        <p>{message}</p>
+        {status ? <p className="text-xs opacity-75">狀態 {status}</p> : null}
+        {missing.length > 0 ? <p className="text-xs opacity-75">缺少欄位 {missing.join("、")}</p> : null}
+        {details ? <p className="line-clamp-3 text-xs opacity-75">細節 {details}</p> : null}
+      </div>
     </div>
   );
 }
@@ -173,7 +195,25 @@ function DashboardContent({
   const sources: AnalyticsSources | undefined = data?.sources;
   const pages: AnalyticsPage[] = data?.pages.items ?? [];
   const events = data?.events.events ?? summary?.events ?? {};
-  const connected = Boolean(summary?.connected);
+  const connectionStates = useMemo(() => {
+    if (!data) return [{ label: "資料狀態", state: { connected: false, message: "資料更新中", status: "loading" } }];
+
+    return [
+      { label: "總覽", state: summary },
+      { label: "熱門頁面", state: data.pages },
+      { label: "來源與裝置", state: sources },
+      { label: "事件追蹤", state: data.events }
+    ].filter(({ state }) => state && (!state.connected || state.status === "no_data"));
+  }, [data, sources, summary]);
+
+  const connected = Boolean(
+    data &&
+      summary?.connected &&
+      data.pages.connected &&
+      sources?.connected &&
+      data.events.connected &&
+      connectionStates.length === 0
+  );
 
   const metrics = useMemo(
     () => [
@@ -222,7 +262,21 @@ function DashboardContent({
           </div>
         </header>
 
-        {!connected ? <div className="mt-6"><StatusNotice message={summary?.message || fallbackMessage} /></div> : null}
+        <div className="mt-6 grid gap-3">
+          {connected ? (
+            <StatusNotice tone="success" message="正常連接 Google Analytics 4 Data API" status="connected" />
+          ) : (
+            connectionStates.map(({ label, state }) => (
+              <StatusNotice
+                key={`${label}-${state?.status}-${state?.message}`}
+                message={`${label} ${state?.message || fallbackMessage}`}
+                status={state?.status}
+                missing={state?.missing}
+                details={state?.details}
+              />
+            ))
+          )}
+        </div>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (
@@ -256,10 +310,18 @@ function DashboardContent({
 
         <section className="mt-6 grid gap-5 xl:grid-cols-2">
           <RankingList
-            title="地區來源"
+            title="設備型號"
             valueLabel="users"
-            items={(sources?.countries ?? []).map((item) => ({ label: item.label, value: item.users }))}
+            items={(sources?.deviceModels ?? []).map((item) => ({ label: item.label, value: item.users }))}
           />
+          <RankingList
+            title="城市來源"
+            valueLabel="users"
+            items={(sources?.cities ?? sources?.countries ?? []).map((item) => ({ label: item.label, value: item.users }))}
+          />
+        </section>
+
+        <section className="mt-6">
           <div className="data-card rounded-md border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded border border-signal-cyan/25 bg-signal-cyan/[0.06] text-signal-cyan">

@@ -1,5 +1,12 @@
 import { requireAdmin } from "../../server/utils/adminAuth.js";
-import { activeUsersFor, eventCounts, isGaConfigured, rowMetrics, runReport } from "../../server/utils/ga4.js";
+import {
+  activeUsersFor,
+  eventCounts,
+  gaErrorPayload,
+  getGaSetupStatus,
+  rowMetrics,
+  runReport
+} from "../../server/utils/ga4.js";
 import { analyticsNotConnected, methodNotAllowed, sendJson } from "../../server/utils/http.js";
 
 export default async function handler(req, res) {
@@ -10,8 +17,9 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  if (!isGaConfigured()) {
-    analyticsNotConnected(res);
+  const setup = getGaSetupStatus();
+  if (!setup.configured) {
+    analyticsNotConnected(res, setup.message, setup);
     return;
   }
 
@@ -41,6 +49,8 @@ export default async function handler(req, res) {
       200,
       {
         connected: true,
+        status: "connected",
+        message: "正常連接",
         updatedAt: new Date().toISOString(),
         todayUsers,
         sevenDayUsers,
@@ -56,6 +66,7 @@ export default async function handler(req, res) {
     );
   } catch (error) {
     console.error("analytics summary failed", error);
-    analyticsNotConnected(res, "資料更新中");
+    const payload = gaErrorPayload(error);
+    analyticsNotConnected(res, payload.message, payload);
   }
 }
