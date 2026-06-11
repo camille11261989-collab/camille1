@@ -273,9 +273,32 @@ main > section:nth-child(5) {
   min-width: 0;
 }
 
-.market-widget-shell iframe {
+.market-ticker-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 0 1px 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(123, 200, 216, 0.24) transparent;
+}
+
+.market-ticker-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.market-ticker-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.market-ticker-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(123, 200, 216, 0.24);
+}
+
+.market-widget-shell {
   display: block;
-  width: 100% !important;
+  overflow: visible;
+  border: 0;
 }
 
 .market-board-flow {

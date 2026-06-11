@@ -3,8 +3,8 @@ import Contact from "./components/Contact";
 import CursorExperience from "./components/CursorExperience";
 import Expertise from "./components/Expertise";
 import FeaturedInsights from "./components/FeaturedInsights";
-import GlobalMarketBoard from "./components/GlobalMarketBoard";
 import Hero from "./components/Hero";
+import MarketTicker from "./components/MarketTicker";
 import Navigation from "./components/Navigation";
 import ScrollContinuity from "./components/ScrollContinuity";
 
@@ -16,7 +16,7 @@ export default function App() {
       <Navigation />
       <main>
         <Hero />
-        <GlobalMarketBoard />
+        <MarketTicker />
         <About />
         <Expertise />
         <FeaturedInsights />
