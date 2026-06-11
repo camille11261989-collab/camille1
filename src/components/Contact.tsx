@@ -81,7 +81,12 @@ export default function Contact() {
 
         <footer className="mt-14 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-sm text-steel-500 md:flex-row">
           <p>© 2026 camille 張若琳 市場風險 全球市場 FinTech</p>
-          <p>Less But Better</p>
+          <div className="max-w-3xl space-y-2 md:text-right">
+            <p className="text-xs leading-6 text-steel-500 md:text-[12px]">
+              本網站內容僅作為市場觀察與資訊分享 非個別投資建議 投資前請自行評估風險
+            </p>
+            <p>Less But Better</p>
+          </div>
         </footer>
       </div>
     </section>
