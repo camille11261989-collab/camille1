@@ -216,23 +216,24 @@ export function gaErrorPayload(error) {
 
   if (statusCode === 403 && /has not been used|disabled|not enabled/i.test(details)) {
     return {
-      status: "ga4_api_not_enabled",
+      status: "api_not_enabled",
       message: "Google Analytics Data API 尚未啟用",
       details
     };
   }
 
   if (statusCode === 403) {
+    const serviceAccount = process.env.GA4_CLIENT_EMAIL || "GA4_CLIENT_EMAIL";
     return {
-      status: "ga4_permission_denied",
-      message: "Service Account 沒有 GA4 權限，請到 GA4 Property Access Management 加入 GA4_CLIENT_EMAIL",
+      status: "permission_denied",
+      message: `Service Account 沒有 GA4 權限，請到 GA4 管理 → 資源存取權管理 加入 ${serviceAccount}`,
       details
     };
   }
 
   if (statusCode === 404) {
     return {
-      status: "ga4_property_not_found",
+      status: "property_not_found",
       message: "GA4 Property ID 找不到，請確認 GA4_PROPERTY_ID 是純數字資源 ID",
       details
     };
@@ -240,7 +241,7 @@ export function gaErrorPayload(error) {
 
   if (statusCode === 400) {
     return {
-      status: "ga4_bad_request",
+      status: "bad_request",
       message: "GA4 查詢欄位不支援或 Property ID 格式錯誤",
       details
     };

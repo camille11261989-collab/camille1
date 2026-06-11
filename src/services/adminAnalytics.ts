@@ -31,6 +31,8 @@ export type AnalyticsSources = ConnectionState & {
   devices?: Array<{ label: string; users: number }>;
   countries?: Array<{ label: string; users: number }>;
   deviceModels?: Array<{ label: string; users: number }>;
+  deviceModelDimension?: string;
+  deviceModelNote?: string;
   cities?: Array<{ label: string; users: number }>;
 };
 

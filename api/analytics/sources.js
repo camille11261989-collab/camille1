@@ -42,6 +42,27 @@ async function cityBreakdown(limit = 10) {
   );
 }
 
+async function deviceModelBreakdown(limit = 10) {
+  const candidates = [
+    { dimension: "mobileDeviceModel", note: "GA4 Mobile Device Model" },
+    { dimension: "mobileDeviceBranding", note: "GA4 Mobile Device Branding" },
+    { dimension: "operatingSystemWithVersion", note: "GA4 Operating System Version" },
+    { dimension: "deviceCategory", note: "GA4 Device Category" }
+  ];
+
+  let lastError;
+  for (const candidate of candidates) {
+    try {
+      const items = await breakdown(candidate.dimension, limit);
+      return { items, dimension: candidate.dimension, note: candidate.note };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     methodNotAllowed(res);
@@ -57,13 +78,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [channels, devices, deviceModels, cities] = await Promise.all([
+    const [channels, devices, deviceModelData, cities] = await Promise.all([
       breakdown("sessionDefaultChannelGroup", 8),
       breakdown("deviceCategory", 4),
-      breakdown("mobileDeviceModel", 10),
+      deviceModelBreakdown(10),
       cityBreakdown(10)
     ]);
 
+    const deviceModels = deviceModelData.items;
     const hasData = channels.length > 0 || devices.length > 0 || deviceModels.length > 0 || cities.length > 0;
 
     sendJson(
@@ -71,12 +93,14 @@ export default async function handler(req, res) {
       200,
       {
         connected: true,
-        status: hasData ? "connected" : "no_data",
+        status: hasData ? "connected" : "empty_data",
         message: hasData ? "正常連接" : "GA4 查無資料",
         updatedAt: new Date().toISOString(),
         channels,
         devices,
         deviceModels,
+        deviceModelDimension: deviceModelData.dimension,
+        deviceModelNote: deviceModelData.note,
         cities,
         countries: cities
       },

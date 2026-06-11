@@ -203,7 +203,7 @@ function DashboardContent({
       { label: "熱門頁面", state: data.pages },
       { label: "來源與裝置", state: sources },
       { label: "事件追蹤", state: data.events }
-    ].filter(({ state }) => state && (!state.connected || state.status === "no_data"));
+    ].filter(({ state }) => state && (!state.connected || state.status === "empty_data"));
   }, [data, sources, summary]);
 
   const connected = Boolean(

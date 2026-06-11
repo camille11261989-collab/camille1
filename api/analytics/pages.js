@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       200,
       {
         connected: true,
-        status: report.rows?.length ? "connected" : "no_data",
+        status: report.rows?.length ? "connected" : "empty_data",
         message: report.rows?.length ? "正常連接" : "GA4 查無資料",
         updatedAt: new Date().toISOString(),
         items:
