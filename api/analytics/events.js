@@ -24,6 +24,7 @@ export default async function handler(req, res) {
         connected: true,
         status: "connected",
         message: "正常連接",
+        authMode: setup.authMode,
         updatedAt: new Date().toISOString(),
         events: await eventCounts()
       },

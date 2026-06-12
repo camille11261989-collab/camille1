@@ -14,27 +14,28 @@ import {
 
 type DashboardData = Awaited<ReturnType<typeof loadAnalyticsDashboard>>;
 
-const fallbackMessage = "數據尚未連接";
+const emptyDataMessage = "尚未累積資料";
+const emptyListMessage = "GA4 尚未累積足夠資料";
 
 function formatNumber(value?: number) {
-  if (!Number.isFinite(value)) return fallbackMessage;
+  if (!Number.isFinite(value)) return "0";
   return new Intl.NumberFormat("zh-TW").format(value ?? 0);
 }
 
 function formatPercent(value?: number) {
-  if (!Number.isFinite(value)) return fallbackMessage;
+  if (!Number.isFinite(value)) return "0.0%";
   return `${((value ?? 0) * 100).toFixed(1)}%`;
 }
 
 function formatDuration(seconds?: number) {
-  if (!Number.isFinite(seconds)) return fallbackMessage;
+  if (!Number.isFinite(seconds)) return "0秒";
   const minutes = Math.floor((seconds ?? 0) / 60);
   const rest = Math.round((seconds ?? 0) % 60);
   return minutes > 0 ? `${minutes}分${rest}秒` : `${rest}秒`;
 }
 
 function StatusNotice({
-  message = fallbackMessage,
+  message = emptyDataMessage,
   status,
   missing = [],
   details,
@@ -100,8 +101,52 @@ function RankingList({
             </div>
           ))
         ) : (
-          <p className="py-4 text-sm text-steel-500">{fallbackMessage}</p>
+          <p className="py-4 text-sm text-steel-500">{emptyListMessage}</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function hasListData(items?: Array<unknown>) {
+  return Boolean(items?.length);
+}
+
+function hasMetricData(summary?: AnalyticsSummary) {
+  return Boolean(
+    (summary?.todayUsers ?? 0) > 0 ||
+      (summary?.sevenDayUsers ?? 0) > 0 ||
+      (summary?.thirtyDayUsers ?? 0) > 0 ||
+      (summary?.pageViews ?? 0) > 0
+  );
+}
+
+function Ga4ConnectionCard({
+  authMode,
+  apiReadable,
+  hasData
+}: {
+  authMode?: string;
+  apiReadable: boolean;
+  hasData: boolean;
+}) {
+  const authLabel = authMode === "oauth" ? "OAuth 已連接" : authMode === "service_account" ? "Service Account 已設定" : "授權狀態待確認";
+
+  return (
+    <div className="data-card rounded-md border border-signal-cyan/20 bg-signal-cyan/[0.035] p-5">
+      <p className="font-plex text-xs uppercase tracking-[0.22em] text-signal-cyan/75">GA4 Connection</p>
+      <h3 className="mt-3 font-plex text-xl font-medium text-white">GA4 連線狀態</h3>
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {[
+          ["授權狀態", authLabel],
+          ["GA4 API", apiReadable ? "已可讀取" : "尚未連接"],
+          ["目前資料狀態", hasData ? "已有資料" : "尚未累積"]
+        ].map(([label, value]) => (
+          <div key={label} className="rounded border border-white/10 bg-ink-950/35 p-3">
+            <p className="text-[11px] text-steel-500">{label}</p>
+            <p className="mt-2 text-sm font-medium text-steel-100">{value}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -208,16 +253,19 @@ function DashboardContent({
       { label: "熱門頁面", state: data.pages },
       { label: "來源與裝置", state: sources },
       { label: "事件追蹤", state: data.events }
-    ].filter(({ state }) => state && (!state.connected || state.status === "empty_data"));
+    ].filter(({ state }) => state && !state.connected);
   }, [data, sources, summary]);
 
-  const connected = Boolean(
-    data &&
-      summary?.connected &&
-      data.pages.connected &&
-      sources?.connected &&
-      data.events.connected &&
-      connectionStates.length === 0
+  const apiReadable = Boolean(data && summary?.connected && data.pages.connected && sources?.connected && data.events.connected);
+  const authMode = summary?.authMode || data?.pages.authMode || sources?.authMode || data?.events.authMode;
+  const dashboardHasData = Boolean(
+    hasMetricData(summary) ||
+      hasListData(pages) ||
+      hasListData(sources?.channels) ||
+      hasListData(sources?.devices) ||
+      hasListData(sources?.deviceModels) ||
+      hasListData(sources?.cities) ||
+      Object.values(events).some((value) => Number(value) > 0)
   );
 
   const metrics = useMemo(
@@ -277,13 +325,13 @@ function DashboardContent({
         {oauthError ? <div className="mt-6"><StatusNotice message={oauthError} status="oauth_setup" /></div> : null}
 
         <div className="mt-6 grid gap-3">
-          {connected ? (
+          {apiReadable ? (
             <StatusNotice tone="success" message="正常連接 Google Analytics 4 Data API" status="connected" />
           ) : (
             connectionStates.map(({ label, state }) => (
               <StatusNotice
                 key={`${label}-${state?.status}-${state?.message}`}
-                message={`${label} ${state?.message || fallbackMessage}`}
+                message={`${label} ${state?.message || emptyDataMessage}`}
                 status={state?.status}
                 missing={state?.missing}
                 details={state?.details}
@@ -291,6 +339,10 @@ function DashboardContent({
             ))
           )}
         </div>
+
+        <section className="mt-6">
+          <Ga4ConnectionCard authMode={authMode} apiReadable={apiReadable} hasData={dashboardHasData} />
+        </section>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (

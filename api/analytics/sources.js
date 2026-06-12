@@ -94,7 +94,8 @@ export default async function handler(req, res) {
       {
         connected: true,
         status: hasData ? "connected" : "empty_data",
-        message: hasData ? "正常連接" : "GA4 查無資料",
+        message: hasData ? "正常連接" : "GA4 尚未累積足夠資料",
+        authMode: setup.authMode,
         updatedAt: new Date().toISOString(),
         channels,
         devices,

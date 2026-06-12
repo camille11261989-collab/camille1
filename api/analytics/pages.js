@@ -31,7 +31,8 @@ export default async function handler(req, res) {
       {
         connected: true,
         status: report.rows?.length ? "connected" : "empty_data",
-        message: report.rows?.length ? "正常連接" : "GA4 查無資料",
+        message: report.rows?.length ? "正常連接" : "GA4 尚未累積足夠資料",
+        authMode: setup.authMode,
         updatedAt: new Date().toISOString(),
         items:
           report.rows?.map((row) => ({

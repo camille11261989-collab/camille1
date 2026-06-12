@@ -40,7 +40,13 @@ export default async function handler(req, res) {
       eventCounts()
     ]);
 
-    const [thirtyDayUsers, pageViews, averageSessionDuration, bounceRate, engagementRate] = rowMetrics(thirtyDayReport);
+    const [
+      thirtyDayUsers = 0,
+      pageViews = 0,
+      averageSessionDuration = 0,
+      bounceRate = 0,
+      engagementRate = 0
+    ] = rowMetrics(thirtyDayReport);
     const conversionClicks = (events.click_line ?? 0) + (events.click_contact ?? 0) + (events.click_booking ?? 0);
     const conversionRate = thirtyDayUsers > 0 ? conversionClicks / thirtyDayUsers : 0;
 
@@ -51,6 +57,7 @@ export default async function handler(req, res) {
         connected: true,
         status: "connected",
         message: "正常連接",
+        authMode: setup.authMode,
         updatedAt: new Date().toISOString(),
         todayUsers,
         sevenDayUsers,

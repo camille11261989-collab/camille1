@@ -14,7 +14,7 @@ export function methodNotAllowed(res) {
   sendJson(res, 405, { error: "Method Not Allowed" });
 }
 
-export function analyticsNotConnected(res, message = "數據尚未連接", options = {}) {
+export function analyticsNotConnected(res, message = "資料更新中", options = {}) {
   sendJson(
     res,
     200,

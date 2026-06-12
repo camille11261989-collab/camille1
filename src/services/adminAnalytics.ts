@@ -4,6 +4,7 @@ export type ConnectionState = {
   message?: string;
   missing?: string[];
   details?: string;
+  authMode?: string;
   updatedAt?: string;
 };
 
