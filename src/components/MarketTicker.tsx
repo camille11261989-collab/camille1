@@ -2,13 +2,14 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 const tradingViewSymbols = [
-  { proName: "INDEX:TAIEX", title: "台股加權" },
-  { proName: "AMEX:SPY", title: "S&P 500 ETF" },
+  { proName: "TWSE:IX0001", title: "台股加權" },
+  { proName: "TPEX:IX0043", title: "櫃買指數" },
   { proName: "HSI:HSI", title: "恒生指數" },
   { proName: "HSI:HSTECH", title: "恒生科技" },
-  { proName: "NASDAQ:QQQ", title: "Nasdaq ETF" },
-  { proName: "AMEX:EWJ", title: "日本市場 ETF" },
-  { proName: "AMEX:EWY", title: "韓國市場 ETF" }
+  { proName: "NASDAQ:IXIC", title: "Nasdaq" },
+  { proName: "TVC:SPX", title: "S&P 500" },
+  { proName: "TVC:NI225", title: "日經225" },
+  { proName: "KRX:KOSPI", title: "韓國KOSPI" }
 ];
 
 function TradingViewTickerTape() {
