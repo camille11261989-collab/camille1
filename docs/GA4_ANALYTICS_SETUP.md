@@ -6,6 +6,12 @@ https://xqcamille.com/admin/analytics
 
 看板會讀取 Google Analytics 4 Data API，顯示訪客數、頁面瀏覽、熱門頁面、流量來源、裝置比例、設備型號、城市來源與轉化事件。
 
+## 目前建議方案：OAuth
+
+如果 GA4「資源存取權管理」無法加入 Service Account，請改用 OAuth。OAuth 會由你本人具備 GA4 權限的 Google 帳號授權一次，後端用 refresh token 讀取 GA4 Data API。
+
+這個方式不需要把 `xqcamille-ga4-reader@...iam.gserviceaccount.com` 加入 GA4 使用者管理。
+
 ## 需要準備的 Vercel Environment Variables
 
 請到 Vercel 專案新增以下欄位：
@@ -15,11 +21,13 @@ ADMIN_PASSWORD=你的後台密碼
 ADMIN_SESSION_SECRET=你的後台 session secret
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 GA4_PROPERTY_ID=123456789
-GA4_CLIENT_EMAIL=service-account@project-id.iam.gserviceaccount.com
-GA4_PRIVATE_KEY_BASE64=base64_encoded_private_key
+GA4_OAUTH_CLIENT_ID=google_oauth_client_id
+GA4_OAUTH_CLIENT_SECRET=google_oauth_client_secret
+GA4_OAUTH_REFRESH_TOKEN=google_oauth_refresh_token
+GA4_OAUTH_REDIRECT_URI=https://xqcamille.com/api/admin/ga4/oauth-callback
 ```
 
-不要把真實密碼、session secret、service account JSON 或 private key commit 到 GitHub。
+不要把真實密碼、session secret、OAuth client secret、refresh token、service account JSON 或 private key commit 到 GitHub。
 
 ## 1. 找 GA4 Measurement ID
 
@@ -54,20 +62,28 @@ VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 GA4_PROPERTY_ID=123456789
 ```
 
-## 3. 建立 Google Cloud Service Account
+## 3. 建立 Google OAuth Client
 
 1. 進入 Google Cloud Console
-2. 選擇一個專案，或建立新專案
-3. 到「IAM 與管理」→「服務帳戶」
-4. 點「建立服務帳戶」
-5. 名稱可以填 `xqcamille-ga4-reader`
-6. 建立完成後，進入這個服務帳戶
-7. 到「金鑰」
-8. 點「新增金鑰」→「建立新的金鑰」
-9. 選擇 JSON
-10. 下載 `service-account.json`
+2. 選擇你目前啟用 Google Analytics Data API 的專案
+3. 到「API 和服務」→「OAuth 同意畫面」
+4. 設定應用程式名稱，例如 `xqcamille analytics dashboard`
+5. 使用者類型選外部或內部，依你的帳號狀態而定
+6. 到「憑證」→「建立憑證」→「OAuth 用戶端 ID」
+7. 應用程式類型選「網頁應用程式」
+8. 已授權重新導向 URI 加入：
 
-這個 JSON 不能上傳 GitHub，也不要傳給別人。
+```text
+https://xqcamille.com/api/admin/ga4/oauth-callback
+```
+
+建立完成後，把用戶端 ID 與密鑰放到 Vercel：
+
+```env
+GA4_OAUTH_CLIENT_ID=google_oauth_client_id
+GA4_OAUTH_CLIENT_SECRET=google_oauth_client_secret
+GA4_OAUTH_REDIRECT_URI=https://xqcamille.com/api/admin/ga4/oauth-callback
+```
 
 ## 4. 啟用 Google Analytics Data API
 
@@ -83,25 +99,38 @@ GA4_PROPERTY_ID=123456789
 Google Analytics Data API 尚未啟用
 ```
 
-## 5. 取得 GA4_CLIENT_EMAIL
+## 5. 產生 GA4 OAuth refresh token
 
-打開剛剛下載的 `service-account.json`，找到：
-
-```json
-{
-  "client_email": "service-account@project-id.iam.gserviceaccount.com"
-}
-```
-
-把它填到：
+1. 先確認 Vercel 已設定：
 
 ```env
-GA4_CLIENT_EMAIL=service-account@project-id.iam.gserviceaccount.com
+ADMIN_PASSWORD
+ADMIN_SESSION_SECRET
+VITE_GA_MEASUREMENT_ID
+GA4_PROPERTY_ID
+GA4_OAUTH_CLIENT_ID
+GA4_OAUTH_CLIENT_SECRET
+GA4_OAUTH_REDIRECT_URI
 ```
 
-## 6. 把 private_key 轉成 Base64
+2. Redeploy 正式站
+3. 登入 `https://xqcamille.com/admin/analytics`
+4. 點「GA4 OAuth 授權」
+5. 使用有 xqcamille GA4 權限的 Google 帳號完成同意
+6. callback 頁面會顯示：
 
-請把 `service-account.json` 暫時放在專案根目錄，執行：
+```env
+GA4_OAUTH_REFRESH_TOKEN=...
+```
+
+7. 把這一行加入 Vercel Production Environment Variables
+8. 再次 Redeploy
+
+## 6. 備援 Service Account 模式
+
+如果 GA4 可以加入 Service Account，才需要使用這段。若 GA4 顯示「這個電子郵件與 Google 帳戶不符」，請不要再用這條路，改用上面的 OAuth。
+
+打開 `service-account.json`，找到 `client_email`，並把 `private_key` 轉成 base64：
 
 ```bash
 node -e "const key=require('./service-account.json').private_key; console.log(Buffer.from(key).toString('base64'))"
@@ -110,6 +139,7 @@ node -e "const key=require('./service-account.json').private_key; console.log(Bu
 終端機會輸出一長串 base64 字串，把它填到：
 
 ```env
+GA4_CLIENT_EMAIL=service-account@project-id.iam.gserviceaccount.com
 GA4_PRIVATE_KEY_BASE64=base64_encoded_private_key
 ```
 
@@ -120,7 +150,7 @@ GA4_PRIVATE_KEY_BASE64=base64_encoded_private_key
 - 不要把 `service-account.json` commit 到 GitHub
 - 設定完成後，可以把 `service-account.json` 刪除或移到安全位置
 
-## 7. 把 Service Account 加到 GA4 權限
+## 7. Service Account 權限備援
 
 1. 回到 Google Analytics
 2. 左下角點「管理」
@@ -137,6 +167,8 @@ GA4_PRIVATE_KEY_BASE64=base64_encoded_private_key
 Service Account 沒有 GA4 權限
 ```
 
+如果 GA4 不接受 Service Account email，請使用 OAuth，不要卡在這一步。
+
 ## 8. 到 Vercel 新增 Environment Variables
 
 1. 進入 Vercel
@@ -150,8 +182,10 @@ ADMIN_PASSWORD=你的後台密碼
 ADMIN_SESSION_SECRET=你的後台 session secret
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 GA4_PROPERTY_ID=123456789
-GA4_CLIENT_EMAIL=service-account@project-id.iam.gserviceaccount.com
-GA4_PRIVATE_KEY_BASE64=base64_encoded_private_key
+GA4_OAUTH_CLIENT_ID=google_oauth_client_id
+GA4_OAUTH_CLIENT_SECRET=google_oauth_client_secret
+GA4_OAUTH_REFRESH_TOKEN=google_oauth_refresh_token
+GA4_OAUTH_REDIRECT_URI=https://xqcamille.com/api/admin/ga4/oauth-callback
 ```
 
 建議至少勾選 `Production`。如果你也想在 Preview 部署測試，也可以勾選 `Preview`。

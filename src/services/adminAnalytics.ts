@@ -74,6 +74,18 @@ export function logoutAdmin() {
   return fetchJson<{ ok: boolean }>("/api/admin/logout", { method: "POST" });
 }
 
+export function getGa4OAuthUrl() {
+  return fetchJson<{
+    configured: boolean;
+    authUrl?: string;
+    redirectUri?: string;
+    scope?: string;
+    status?: string;
+    message?: string;
+    missing?: string[];
+  }>("/api/admin/ga4/oauth-url");
+}
+
 export async function loadAnalyticsDashboard() {
   const [summary, pages, sources, events] = await Promise.all([
     fetchJson<AnalyticsSummary>("/api/analytics/summary"),

@@ -6,6 +6,7 @@ import {
   AnalyticsSummary,
   AnalyticsSources,
   checkAdminSession,
+  getGa4OAuthUrl,
   loadAnalyticsDashboard,
   loginAdmin,
   logoutAdmin
@@ -184,11 +185,15 @@ function DashboardContent({
   data,
   refreshing,
   onRefresh,
+  onStartOAuth,
+  oauthError,
   onLogout
 }: {
   data: DashboardData | null;
   refreshing: boolean;
   onRefresh: () => void;
+  onStartOAuth: () => void;
+  oauthError: string;
   onLogout: () => void;
 }) {
   const summary: AnalyticsSummary | undefined = data?.summary;
@@ -253,6 +258,13 @@ function DashboardContent({
             </button>
             <button
               type="button"
+              onClick={onStartOAuth}
+              className="inline-flex items-center gap-2 rounded border border-signal-cyan/25 bg-signal-cyan/[0.06] px-4 py-2 text-sm text-signal-cyan transition hover:border-signal-cyan/45 hover:bg-signal-cyan/[0.1]"
+            >
+              GA4 OAuth 授權
+            </button>
+            <button
+              type="button"
               onClick={onLogout}
               className="inline-flex items-center gap-2 rounded border border-white/10 bg-white px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-steel-300"
             >
@@ -261,6 +273,8 @@ function DashboardContent({
             </button>
           </div>
         </header>
+
+        {oauthError ? <div className="mt-6"><StatusNotice message={oauthError} status="oauth_setup" /></div> : null}
 
         <div className="mt-6 grid gap-3">
           {connected ? (
@@ -364,6 +378,7 @@ export default function AnalyticsDashboard() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [oauthError, setOauthError] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
 
   const loadData = async () => {
@@ -430,6 +445,20 @@ export default function AnalyticsDashboard() {
       data={data}
       refreshing={refreshing}
       onRefresh={loadData}
+      oauthError={oauthError}
+      onStartOAuth={async () => {
+        setOauthError("");
+        try {
+          const response = await getGa4OAuthUrl();
+          if (response.authUrl) {
+            window.location.href = response.authUrl;
+          } else {
+            setOauthError(response.message || "GA4 OAuth 尚未設定");
+          }
+        } catch (error) {
+          setOauthError(error instanceof Error ? error.message : "GA4 OAuth 授權連結產生失敗");
+        }
+      }}
       onLogout={async () => {
         await logoutAdmin().catch(() => undefined);
         setAuthenticated(false);
