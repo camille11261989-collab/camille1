@@ -1,60 +1,84 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-const tradingViewSymbols = [
-  { proName: "TWSE:IX0001", title: "台股加權" },
-  { proName: "TPEX:IX0043", title: "櫃買指數" },
-  { proName: "HSI:HSI", title: "恒生指數" },
-  { proName: "HSI:HSTECH", title: "恒生科技" },
-  { proName: "NASDAQ:IXIC", title: "Nasdaq" },
-  { proName: "TVC:SPX", title: "S&P 500" },
-  { proName: "TVC:NI225", title: "日經225" },
-  { proName: "KRX:KOSPI", title: "韓國KOSPI" }
-];
+type MarketQuote = {
+  title: string;
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  source?: string;
+};
 
-function TradingViewTickerTape() {
+type MarketQuotesResponse = {
+  connected: boolean;
+  status: string;
+  message?: string;
+  updatedAt?: string;
+  sourcePolicy?: string;
+  items?: MarketQuote[];
+};
+
+function formatPrice(value: number) {
+  return new Intl.NumberFormat("zh-TW", {
+    maximumFractionDigits: value >= 1000 ? 2 : 3
+  }).format(value);
+}
+
+function formatChange(value: number) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}`;
+}
+
+function formatPercent(value: number) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+function MarketQuoteTape() {
+  const [quotes, setQuotes] = useState<MarketQuote[]>([]);
+  const [sourcePolicy, setSourcePolicy] = useState("");
   const [hasError, setHasError] = useState(false);
-  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    const target = widgetRef.current;
-    if (!target) return undefined;
-    if (target.dataset.tvWidgetMounted === "true") return undefined;
-
+    mountedRef.current = true;
     setHasError(false);
-    target.dataset.tvWidgetMounted = "true";
-    target.innerHTML = '<div class="tradingview-widget-container__widget min-h-[46px]"></div>';
 
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
-    script.async = true;
-    script.type = "text/javascript";
-    script.innerHTML = JSON.stringify({
-      symbols: tradingViewSymbols,
-      showSymbolLogo: false,
-      isTransparent: false,
-      displayMode: "adaptive",
-      colorTheme: "dark",
-      width: "100%",
-      height: 46,
-      locale: "zh_TW"
-    });
-    script.onerror = () => setHasError(true);
+    async function loadQuotes() {
+      try {
+        const response = await fetch(import.meta.env.VITE_MARKET_QUOTES_API_URL || "/api/market-quotes", {
+          headers: { Accept: "application/json" }
+        });
 
-    const loadTimer = window.setTimeout(() => {
-      if (!target.querySelector("iframe")) {
+        if (!response.ok) throw new Error("market_quotes_failed");
+
+        const data = (await response.json()) as MarketQuotesResponse;
+        if (!mountedRef.current) return;
+
+        if (!data.items?.length) {
+          setHasError(true);
+          return;
+        }
+
+        setQuotes(data.items);
+        setSourcePolicy(data.sourcePolicy ?? "");
+      } catch {
+        if (!mountedRef.current) return;
         setHasError(true);
       }
-    }, 12000);
+    }
 
-    target.appendChild(script);
+    void loadQuotes();
+    const interval = window.setInterval(loadQuotes, 60_000);
 
     return () => {
-      window.clearTimeout(loadTimer);
+      mountedRef.current = false;
+      window.clearInterval(interval);
     };
   }, []);
 
-  if (hasError) {
+  if (hasError || quotes.length === 0) {
     return (
       <div className="grid min-h-16 place-items-center rounded border border-white/[0.08] bg-ink-950/55 px-4 text-sm text-steel-400">
         市場報價資料更新中
@@ -62,10 +86,31 @@ function TradingViewTickerTape() {
     );
   }
 
+  const tapeItems = [...quotes, ...quotes];
+
   return (
     <div className="market-ticker-scroll">
-      <div className="market-widget-shell h-[52px] min-h-[52px] w-full min-w-[1180px] rounded border border-white/[0.08] bg-ink-950/55">
-        <div ref={widgetRef} className="tradingview-widget-container min-h-[46px]" />
+      <div
+        className="market-widget-shell h-[52px] min-h-[52px] w-full min-w-[1180px] overflow-hidden rounded border border-white/[0.08] bg-ink-950/55"
+        aria-label={sourcePolicy || "跨市場報價資料"}
+      >
+        <div className="market-quote-track">
+          {tapeItems.map((quote, index) => {
+            const isPositive = quote.change > 0;
+            const isNegative = quote.change < 0;
+            const toneClass = isPositive ? "text-emerald-300" : isNegative ? "text-rose-300" : "text-steel-300";
+
+            return (
+              <div key={`${quote.symbol}-${index}`} className="market-quote-item">
+                <span className="font-plex text-sm font-semibold text-steel-100">{quote.title}</span>
+                <span className="font-plex text-sm text-steel-300">{formatPrice(quote.price)}</span>
+                <span className={`font-plex text-sm ${toneClass}`}>
+                  {formatChange(quote.change)} ({formatPercent(quote.changePercent)})
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -98,13 +143,13 @@ export default function MarketTicker() {
                 </p>
               </div>
               <div className="md:text-right">
-                <p className="text-[7px] uppercase tracking-[0.18em] text-steel-500">TradingView Widget</p>
+                <p className="text-[7px] uppercase tracking-[0.18em] text-steel-500">Index Data Feed</p>
                 <h2 className="mt-0.5 font-plex text-[12px] font-medium text-white md:text-[13px]">跨市場報價觀察</h2>
               </div>
             </div>
 
             <div>
-              <TradingViewTickerTape />
+              <MarketQuoteTape />
             </div>
           </div>
         </motion.div>

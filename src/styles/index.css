@@ -297,8 +297,30 @@ main > section:nth-child(5) {
 
 .market-widget-shell {
   display: block;
-  overflow: visible;
-  border: 0;
+  overflow: hidden;
+}
+
+.market-quote-track {
+  display: flex;
+  width: max-content;
+  min-height: 52px;
+  align-items: center;
+  animation: quote-marquee 44s linear infinite;
+  will-change: transform;
+}
+
+.market-quote-track:hover {
+  animation-play-state: paused;
+}
+
+.market-quote-item {
+  display: inline-flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 12px;
+  padding: 0 26px;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  white-space: nowrap;
 }
 
 .market-board-flow {
@@ -470,6 +492,15 @@ main > section:nth-child(5) {
   100% {
     transform: translate3d(1.5%, 0, 0);
     opacity: 0.76;
+  }
+}
+
+@keyframes quote-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
