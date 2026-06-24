@@ -402,7 +402,7 @@ export function gaErrorPayload(error) {
   if (error?.phase === "oauth_token") {
     return {
       status: "oauth_token_error",
-      message: "GA4 OAuth refresh token 無法換取 access token，請重新產生 GA4_OAUTH_REFRESH_TOKEN",
+      message: "GA4 OAuth 授權已失效，請按右上方 GA4 OAuth 授權重新連接",
       details
     };
   }
