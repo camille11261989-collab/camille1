@@ -363,6 +363,29 @@ export async function runReport(body, req) {
   return response.json();
 }
 
+export async function runRealtimeReport(body, req) {
+  const token = await getAccessToken(req);
+  const propertyId = process.env.GA4_PROPERTY_ID;
+  const response = await fetch(`${DATA_API_BASE}/properties/${propertyId}:runRealtimeReport`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Ga4ApiError("GA4 Realtime API 請求失敗", {
+      statusCode: response.status,
+      phase: "data_api",
+      details: await readError(response)
+    });
+  }
+
+  return response.json();
+}
+
 export function gaErrorPayload(error) {
   if (error instanceof Ga4SetupError || error?.name === "Ga4SetupError") {
     return {

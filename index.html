@@ -32,6 +32,33 @@
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <script>
+      (function () {
+        var measurementId = "%VITE_GA_MEASUREMENT_ID%";
+        var isAdminRoute = location.pathname === "/admin/analytics" || location.pathname === "/dashboard";
+        if (!measurementId || measurementId.indexOf("%") === 0 || isAdminRoute) return;
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag =
+          window.gtag ||
+          function () {
+            window.dataLayer.push(arguments);
+          };
+
+        var script = document.createElement("script");
+        script.async = true;
+        script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId);
+        document.head.appendChild(script);
+
+        window.gtag("js", new Date());
+        window.gtag("config", measurementId, {
+          anonymize_ip: true,
+          page_title: document.title,
+          page_location: location.href
+        });
+        window.__xqGaInitialized = true;
+      })();
+    </script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",

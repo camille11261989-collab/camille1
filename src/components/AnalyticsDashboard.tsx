@@ -252,23 +252,34 @@ function DashboardContent({
 }) {
   const summary: AnalyticsSummary | undefined = data?.summary;
   const sources: AnalyticsSources | undefined = data?.sources;
+  const realtime = data?.realtime;
   const pages: AnalyticsPage[] = data?.pages.items ?? [];
   const events = data?.events.events ?? summary?.events ?? {};
   const connectionStates = useMemo(() => {
     if (!data) return [{ label: "資料狀態", state: { connected: false, message: "資料更新中", status: "loading" } }];
 
-    return [
+    const states = [
       { label: "總覽", state: summary },
       { label: "熱門頁面", state: data.pages },
       { label: "來源與裝置", state: sources },
-      { label: "事件追蹤", state: data.events }
+      { label: "事件追蹤", state: data.events },
+      { label: "即時診斷", state: realtime }
     ].filter(({ state }) => state && !state.connected);
-  }, [data, sources, summary]);
 
-  const apiReadable = Boolean(data && summary?.connected && data.pages.connected && sources?.connected && data.events.connected);
-  const authMode = summary?.authMode || data?.pages.authMode || sources?.authMode || data?.events.authMode;
-  const authSource = summary?.authSource || data?.pages.authSource || sources?.authSource || data?.events.authSource;
+    const seen = new Set<string>();
+    return states.filter(({ state }) => {
+      const key = `${state?.status || ""}-${state?.message || ""}-${state?.details || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [data, realtime, sources, summary]);
+
+  const apiReadable = Boolean(data && summary?.connected && data.pages.connected && sources?.connected && data.events.connected && realtime?.connected);
+  const authMode = summary?.authMode || data?.pages.authMode || sources?.authMode || data?.events.authMode || realtime?.authMode;
+  const authSource = summary?.authSource || data?.pages.authSource || sources?.authSource || data?.events.authSource || realtime?.authSource;
   const dashboardHasData = Boolean(
+    (realtime?.activeUsers ?? 0) > 0 ||
     hasMetricData(summary) ||
       hasListData(pages) ||
       hasListData(sources?.channels) ||
@@ -280,6 +291,7 @@ function DashboardContent({
 
   const metrics = useMemo(
     () => [
+      { label: "即時活躍訪客", value: formatNumber(realtime?.activeUsers), detail: "GA4 Realtime 最近 30 分鐘" },
       { label: "今日訪客數", value: formatNumber(summary?.todayUsers), detail: "GA4 Active Users Today" },
       { label: "最近 7 天訪客數", value: formatNumber(summary?.sevenDayUsers), detail: "近 7 天活躍使用者" },
       { label: "最近 30 天訪客數", value: formatNumber(summary?.thirtyDayUsers), detail: "近 30 天活躍使用者" },
@@ -289,7 +301,7 @@ function DashboardContent({
       { label: "跳出率", value: formatPercent(summary?.bounceRate), detail: "GA4 Bounce Rate" },
       { label: "轉化率", value: formatPercent(summary?.conversionRate), detail: "LINE 聯繫與聯絡點擊 / 30 天訪客" }
     ],
-    [summary]
+    [realtime?.activeUsers, summary]
   );
 
   return (
@@ -455,7 +467,8 @@ export default function AnalyticsDashboard() {
           summary: { connected: false, message: "資料更新中" },
           pages: { connected: false, items: [] },
           sources: { connected: false, channels: [], devices: [], countries: [] },
-          events: { connected: false, events: {} }
+          events: { connected: false, events: {} },
+          realtime: { connected: false, activeUsers: 0, events: {} }
         });
       }
     } finally {

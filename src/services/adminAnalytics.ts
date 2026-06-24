@@ -42,6 +42,11 @@ export type AnalyticsEvents = ConnectionState & {
   events?: Record<string, number>;
 };
 
+export type AnalyticsRealtime = ConnectionState & {
+  activeUsers?: number;
+  events?: Record<string, number>;
+};
+
 export async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
@@ -89,12 +94,13 @@ export function getGa4OAuthUrl() {
 }
 
 export async function loadAnalyticsDashboard() {
-  const [summary, pages, sources, events] = await Promise.all([
+  const [summary, pages, sources, events, realtime] = await Promise.all([
     fetchJson<AnalyticsSummary>("/api/analytics/summary"),
     fetchJson<ConnectionState & { items?: AnalyticsPage[] }>("/api/analytics/pages"),
     fetchJson<AnalyticsSources>("/api/analytics/sources"),
-    fetchJson<AnalyticsEvents>("/api/analytics/events")
+    fetchJson<AnalyticsEvents>("/api/analytics/events"),
+    fetchJson<AnalyticsRealtime>("/api/analytics/realtime")
   ]);
 
-  return { summary, pages, sources, events };
+  return { summary, pages, sources, events, realtime };
 }

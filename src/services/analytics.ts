@@ -6,6 +6,7 @@ declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
+    __xqGaInitialized?: boolean;
   }
 }
 
@@ -19,6 +20,8 @@ export function initAnalytics() {
   if (!measurementId || initialized || typeof window === "undefined") return;
 
   initialized = true;
+  if (window.__xqGaInitialized && window.gtag) return;
+
   window.dataLayer = window.dataLayer || [];
   window.gtag =
     window.gtag ||
@@ -51,6 +54,7 @@ export function trackEvent(name: string, params: AnalyticsParams = {}) {
   initAnalytics();
   try {
     window.gtag?.("event", name, {
+      send_to: measurementId,
       event_category: "site_engagement",
       page_path: window.location.pathname + window.location.hash,
       ...params
