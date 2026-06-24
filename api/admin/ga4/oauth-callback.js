@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { createGa4RefreshTokenCookie } from "../../../server/utils/ga4.js";
 
 function parseCookies(req) {
   const header = req.headers.cookie || "";
@@ -108,11 +109,18 @@ export default async function handler(req, res) {
     return;
   }
 
-  res.setHeader("Set-Cookie", "xq_ga4_oauth_state=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure");
+  res.setHeader(
+    "Set-Cookie",
+    [
+      "xq_ga4_oauth_state=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure",
+      createGa4RefreshTokenCookie(req, data.refresh_token)
+    ].filter(Boolean)
+  );
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.end(
     html(`<h1>GA4 OAuth 授權成功</h1>
-      <p>請把下面這一行加入 Vercel Production Environment Variables，然後 Redeploy。</p>
+      <p>新的 refresh token 已暫存在這台瀏覽器的安全 cookie，回到後台後可立即讀取 GA4。</p>
+      <p>若要讓正式站長期穩定，請仍把下面這一行加入 Vercel Production Environment Variables，然後 Redeploy。</p>
       <pre>GA4_OAUTH_REFRESH_TOKEN=${data.refresh_token}</pre>
       <p>這是敏感憑證，不要貼到 GitHub，不要傳給其他人。</p>
       <p><a href="/admin/analytics">回到網站數據看板</a></p>`)

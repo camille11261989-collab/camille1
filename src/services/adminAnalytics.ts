@@ -5,6 +5,7 @@ export type ConnectionState = {
   missing?: string[];
   details?: string;
   authMode?: string;
+  authSource?: string;
   updatedAt?: string;
 };
 

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  const setup = getGaSetupStatus();
+  const setup = getGaSetupStatus(req);
   if (!setup.configured) {
     analyticsNotConnected(res, setup.message, setup);
     return;
@@ -25,8 +25,9 @@ export default async function handler(req, res) {
         status: "connected",
         message: "正常連接",
         authMode: setup.authMode,
+        authSource: setup.authSource,
         updatedAt: new Date().toISOString(),
-        events: await eventCounts()
+        events: await eventCounts("30daysAgo", "today", req)
       },
       { "Cache-Control": "s-maxage=120, stale-while-revalidate=300" }
     );

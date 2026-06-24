@@ -7,6 +7,8 @@ const DATA_API_BASE = "https://analyticsdata.googleapis.com/v1beta";
 const COMMON_REQUIRED_ENV = ["VITE_GA_MEASUREMENT_ID", "GA4_PROPERTY_ID"];
 const OAUTH_REQUIRED_ENV = ["GA4_OAUTH_CLIENT_ID", "GA4_OAUTH_CLIENT_SECRET", "GA4_OAUTH_REFRESH_TOKEN"];
 const SERVICE_REQUIRED_ENV = ["GA4_CLIENT_EMAIL", "GA4_PRIVATE_KEY_BASE64"];
+const OAUTH_COOKIE_NAME = "xq_ga4_refresh_token";
+const OAUTH_COOKIE_TTL_SECONDS = 180 * 24 * 60 * 60;
 
 let cachedToken;
 
@@ -42,6 +44,83 @@ function hasAny(keys) {
   return keys.some((key) => Boolean(process.env[key]));
 }
 
+function getSecret() {
+  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || "";
+}
+
+function parseCookies(req) {
+  const header = req?.headers?.cookie || "";
+  return Object.fromEntries(
+    header
+      .split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const index = part.indexOf("=");
+        if (index === -1) return [part, ""];
+        return [part.slice(0, index), decodeURIComponent(part.slice(index + 1))];
+      })
+  );
+}
+
+function encryptionKey() {
+  const secret = getSecret();
+  if (!secret) return undefined;
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+function sealRefreshToken(refreshToken) {
+  const key = encryptionKey();
+  if (!key) return undefined;
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(refreshToken, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
+}
+
+function unsealRefreshToken(value) {
+  const key = encryptionKey();
+  if (!key || !value) return undefined;
+
+  try {
+    const [ivValue, tagValue, encryptedValue] = value.split(".");
+    if (!ivValue || !tagValue || !encryptedValue) return undefined;
+
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(ivValue, "base64url"));
+    decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(encryptedValue, "base64url")),
+      decipher.final()
+    ]).toString("utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+function getCookieRefreshToken(req) {
+  return unsealRefreshToken(parseCookies(req)[OAUTH_COOKIE_NAME]);
+}
+
+function getOAuthRefreshToken(req) {
+  return getCookieRefreshToken(req) || process.env.GA4_OAUTH_REFRESH_TOKEN;
+}
+
+function refreshTokenFingerprint(refreshToken) {
+  return crypto.createHash("sha256").update(refreshToken || "").digest("base64url");
+}
+
+export function createGa4RefreshTokenCookie(req, refreshToken) {
+  const sealed = sealRefreshToken(refreshToken);
+  if (!sealed) return undefined;
+
+  const isSecure = req.headers["x-forwarded-proto"] === "https" || req.headers.host?.includes("xqcamille.com");
+  return `${OAUTH_COOKIE_NAME}=${encodeURIComponent(sealed)}; Path=/; Max-Age=${OAUTH_COOKIE_TTL_SECONDS}; HttpOnly; SameSite=Lax${
+    isSecure ? "; Secure" : ""
+  }`;
+}
+
 function decodePrivateKey() {
   const encoded = process.env.GA4_PRIVATE_KEY_BASE64?.trim();
 
@@ -70,12 +149,18 @@ function decodePrivateKey() {
   return privateKey;
 }
 
-function getAuthModeStatus(commonMissing) {
+function getAuthModeStatus(commonMissing, req) {
+  const hasCookieToken = Boolean(getCookieRefreshToken(req));
   const oauthTouched = hasAny(OAUTH_REQUIRED_ENV);
-  const oauthMissing = missingKeys(OAUTH_REQUIRED_ENV);
-  if (oauthTouched || oauthMissing.length === 0) {
+  const oauthMissing = ["GA4_OAUTH_CLIENT_ID", "GA4_OAUTH_CLIENT_SECRET"].filter((key) => !process.env[key]);
+  if (!process.env.GA4_OAUTH_REFRESH_TOKEN && !hasCookieToken) {
+    oauthMissing.push("GA4_OAUTH_REFRESH_TOKEN");
+  }
+
+  if (oauthTouched || hasCookieToken || oauthMissing.length === 0) {
     return {
       authMode: "oauth",
+      authSource: hasCookieToken ? "cookie" : "env",
       missing: [...commonMissing, ...oauthMissing],
       configured: commonMissing.length === 0 && oauthMissing.length === 0,
       message:
@@ -88,6 +173,7 @@ function getAuthModeStatus(commonMissing) {
   const serviceMissing = missingKeys(SERVICE_REQUIRED_ENV);
   return {
     authMode: "service_account",
+    authSource: "env",
     missing: [...commonMissing, ...serviceMissing],
     configured: commonMissing.length === 0 && serviceMissing.length === 0,
     message:
@@ -97,15 +183,16 @@ function getAuthModeStatus(commonMissing) {
   };
 }
 
-export function getGaSetupStatus() {
+export function getGaSetupStatus(req) {
   const commonMissing = missingKeys(COMMON_REQUIRED_ENV);
-  const auth = getAuthModeStatus(commonMissing);
+  const auth = getAuthModeStatus(commonMissing, req);
 
   if (!auth.configured) {
     return {
       configured: false,
       connected: false,
       authMode: auth.authMode,
+      authSource: auth.authSource,
       status: "missing_env",
       missing: auth.missing,
       message: auth.message,
@@ -136,6 +223,7 @@ export function getGaSetupStatus() {
     configured: true,
     connected: true,
     authMode: auth.authMode,
+    authSource: auth.authSource,
     status: "ready",
     missing: [],
     message: auth.authMode === "oauth" ? "OAuth 授權已設定" : "Service Account 授權已設定"
@@ -146,12 +234,12 @@ export function isGaConfigured() {
   return getGaSetupStatus().configured;
 }
 
-function assertGaConfigured() {
-  const setup = getGaSetupStatus();
+function assertGaConfigured(req) {
+  const setup = getGaSetupStatus(req);
   if (!setup.configured) {
     throw new Ga4SetupError(setup.message, setup);
   }
-  return setup.authMode;
+  return setup;
 }
 
 async function readError(response) {
@@ -166,14 +254,16 @@ async function readError(response) {
   }
 }
 
-async function getOAuthAccessToken() {
+async function getOAuthAccessToken(req) {
+  const refreshToken = getOAuthRefreshToken(req);
+
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: process.env.GA4_OAUTH_CLIENT_ID,
       client_secret: process.env.GA4_OAUTH_CLIENT_SECRET,
-      refresh_token: process.env.GA4_OAUTH_REFRESH_TOKEN,
+      refresh_token: refreshToken,
       grant_type: "refresh_token"
     })
   });
@@ -224,16 +314,25 @@ async function getServiceAccountAccessToken() {
   return response.json();
 }
 
-async function getAccessToken() {
-  const authMode = assertGaConfigured();
+async function getAccessToken(req) {
+  const setup = assertGaConfigured(req);
+  const authMode = setup.authMode;
+  const tokenFingerprint =
+    authMode === "oauth" ? refreshTokenFingerprint(getOAuthRefreshToken(req)) : "service_account";
 
-  if (cachedToken && cachedToken.authMode === authMode && cachedToken.expiresAt > Date.now() + 60_000) {
+  if (
+    cachedToken &&
+    cachedToken.authMode === authMode &&
+    cachedToken.tokenFingerprint === tokenFingerprint &&
+    cachedToken.expiresAt > Date.now() + 60_000
+  ) {
     return cachedToken.accessToken;
   }
 
-  const data = authMode === "oauth" ? await getOAuthAccessToken() : await getServiceAccountAccessToken();
+  const data = authMode === "oauth" ? await getOAuthAccessToken(req) : await getServiceAccountAccessToken();
   cachedToken = {
     authMode,
+    tokenFingerprint,
     accessToken: data.access_token,
     expiresAt: Date.now() + Number(data.expires_in ?? 3600) * 1000
   };
@@ -241,8 +340,8 @@ async function getAccessToken() {
   return cachedToken.accessToken;
 }
 
-export async function runReport(body) {
-  const token = await getAccessToken();
+export async function runReport(body, req) {
+  const token = await getAccessToken(req);
   const propertyId = process.env.GA4_PROPERTY_ID;
   const response = await fetch(`${DATA_API_BASE}/properties/${propertyId}:runReport`, {
     method: "POST",
@@ -349,16 +448,16 @@ export function rowMetrics(report) {
   return report?.rows?.[0]?.metricValues?.map((item) => Number(item.value) || 0) ?? [];
 }
 
-export async function activeUsersFor(dateRange) {
+export async function activeUsersFor(dateRange, req) {
   const report = await runReport({
     dateRanges: [dateRange],
     metrics: [{ name: "activeUsers" }]
-  });
+  }, req);
 
   return rowMetrics(report)[0] ?? 0;
 }
 
-export async function eventCounts(startDate = "30daysAgo", endDate = "today") {
+export async function eventCounts(startDate = "30daysAgo", endDate = "today", req) {
   const desiredEvents = [
     "click_line",
     "click_contact",
@@ -378,7 +477,7 @@ export async function eventCounts(startDate = "30daysAgo", endDate = "today") {
         inListFilter: { values: desiredEvents }
       }
     }
-  });
+  }, req);
 
   return Object.fromEntries(
     desiredEvents.map((eventName) => {

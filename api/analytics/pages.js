@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  const setup = getGaSetupStatus();
+  const setup = getGaSetupStatus(req);
   if (!setup.configured) {
     analyticsNotConnected(res, setup.message, setup);
     return;
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
       limit: 10
-    });
+    }, req);
 
     sendJson(
       res,
@@ -33,6 +33,7 @@ export default async function handler(req, res) {
         status: report.rows?.length ? "connected" : "empty_data",
         message: report.rows?.length ? "正常連接" : "GA4 尚未累積足夠資料",
         authMode: setup.authMode,
+        authSource: setup.authSource,
         updatedAt: new Date().toISOString(),
         items:
           report.rows?.map((row) => ({

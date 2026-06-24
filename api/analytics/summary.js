@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  const setup = getGaSetupStatus();
+  const setup = getGaSetupStatus(req);
   if (!setup.configured) {
     analyticsNotConnected(res, setup.message, setup);
     return;
@@ -25,8 +25,8 @@ export default async function handler(req, res) {
 
   try {
     const [todayUsers, sevenDayUsers, thirtyDayReport, events] = await Promise.all([
-      activeUsersFor({ startDate: "today", endDate: "today" }),
-      activeUsersFor({ startDate: "7daysAgo", endDate: "today" }),
+      activeUsersFor({ startDate: "today", endDate: "today" }, req),
+      activeUsersFor({ startDate: "7daysAgo", endDate: "today" }, req),
       runReport({
         dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
         metrics: [
@@ -36,8 +36,8 @@ export default async function handler(req, res) {
           { name: "bounceRate" },
           { name: "engagementRate" }
         ]
-      }),
-      eventCounts()
+      }, req),
+      eventCounts("30daysAgo", "today", req)
     ]);
 
     const [
@@ -58,6 +58,7 @@ export default async function handler(req, res) {
         status: "connected",
         message: "正常連接",
         authMode: setup.authMode,
+        authSource: setup.authSource,
         updatedAt: new Date().toISOString(),
         todayUsers,
         sevenDayUsers,

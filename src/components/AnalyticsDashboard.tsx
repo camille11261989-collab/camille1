@@ -123,14 +123,23 @@ function hasMetricData(summary?: AnalyticsSummary) {
 
 function Ga4ConnectionCard({
   authMode,
+  authSource,
   apiReadable,
   hasData
 }: {
   authMode?: string;
+  authSource?: string;
   apiReadable: boolean;
   hasData: boolean;
 }) {
-  const authLabel = authMode === "oauth" ? "OAuth 已連接" : authMode === "service_account" ? "Service Account 已設定" : "授權狀態待確認";
+  const authLabel =
+    authMode === "oauth"
+      ? authSource === "cookie"
+        ? "OAuth 已連接 Cookie"
+        : "OAuth 已連接 Env"
+      : authMode === "service_account"
+        ? "Service Account 已設定"
+        : "授權狀態待確認";
 
   return (
     <div className="data-card rounded-md border border-signal-cyan/20 bg-signal-cyan/[0.035] p-5">
@@ -258,6 +267,7 @@ function DashboardContent({
 
   const apiReadable = Boolean(data && summary?.connected && data.pages.connected && sources?.connected && data.events.connected);
   const authMode = summary?.authMode || data?.pages.authMode || sources?.authMode || data?.events.authMode;
+  const authSource = summary?.authSource || data?.pages.authSource || sources?.authSource || data?.events.authSource;
   const dashboardHasData = Boolean(
     hasMetricData(summary) ||
       hasListData(pages) ||
@@ -341,7 +351,7 @@ function DashboardContent({
         </div>
 
         <section className="mt-6">
-          <Ga4ConnectionCard authMode={authMode} apiReadable={apiReadable} hasData={dashboardHasData} />
+          <Ga4ConnectionCard authMode={authMode} authSource={authSource} apiReadable={apiReadable} hasData={dashboardHasData} />
         </section>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

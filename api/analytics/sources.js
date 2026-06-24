@@ -2,14 +2,14 @@ import { requireAdmin } from "../../server/utils/adminAuth.js";
 import { dimensionValue, gaErrorPayload, getGaSetupStatus, metricValue, runReport } from "../../server/utils/ga4.js";
 import { analyticsNotConnected, methodNotAllowed, sendJson } from "../../server/utils/http.js";
 
-async function breakdown(dimensionName, limit = 8) {
+async function breakdown(dimensionName, limit = 8, req) {
   const report = await runReport({
     dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
     dimensions: [{ name: dimensionName }],
     metrics: [{ name: "activeUsers" }],
     orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
     limit
-  });
+  }, req);
 
   return (
     report.rows?.map((row) => ({
@@ -19,14 +19,14 @@ async function breakdown(dimensionName, limit = 8) {
   );
 }
 
-async function cityBreakdown(limit = 10) {
+async function cityBreakdown(limit = 10, req) {
   const report = await runReport({
     dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
     dimensions: [{ name: "country" }, { name: "city" }],
     metrics: [{ name: "activeUsers" }],
     orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
     limit
-  });
+  }, req);
 
   return (
     report.rows?.map((row) => {
@@ -42,7 +42,7 @@ async function cityBreakdown(limit = 10) {
   );
 }
 
-async function deviceModelBreakdown(limit = 10) {
+async function deviceModelBreakdown(limit = 10, req) {
   const candidates = [
     { dimension: "mobileDeviceModel", note: "GA4 Mobile Device Model" },
     { dimension: "mobileDeviceBranding", note: "GA4 Mobile Device Branding" },
@@ -53,7 +53,7 @@ async function deviceModelBreakdown(limit = 10) {
   let lastError;
   for (const candidate of candidates) {
     try {
-      const items = await breakdown(candidate.dimension, limit);
+      const items = await breakdown(candidate.dimension, limit, req);
       return { items, dimension: candidate.dimension, note: candidate.note };
     } catch (error) {
       lastError = error;
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  const setup = getGaSetupStatus();
+  const setup = getGaSetupStatus(req);
   if (!setup.configured) {
     analyticsNotConnected(res, setup.message, setup);
     return;
@@ -79,10 +79,10 @@ export default async function handler(req, res) {
 
   try {
     const [channels, devices, deviceModelData, cities] = await Promise.all([
-      breakdown("sessionDefaultChannelGroup", 8),
-      breakdown("deviceCategory", 4),
-      deviceModelBreakdown(10),
-      cityBreakdown(10)
+      breakdown("sessionDefaultChannelGroup", 8, req),
+      breakdown("deviceCategory", 4, req),
+      deviceModelBreakdown(10, req),
+      cityBreakdown(10, req)
     ]);
 
     const deviceModels = deviceModelData.items;
@@ -96,6 +96,7 @@ export default async function handler(req, res) {
         status: hasData ? "connected" : "empty_data",
         message: hasData ? "正常連接" : "GA4 尚未累積足夠資料",
         authMode: setup.authMode,
+        authSource: setup.authSource,
         updatedAt: new Date().toISOString(),
         channels,
         devices,
