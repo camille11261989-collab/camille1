@@ -20,8 +20,6 @@ export function initAnalytics() {
   if (!measurementId || initialized || typeof window === "undefined") return;
 
   initialized = true;
-  if (window.__xqGaInitialized && window.gtag) return;
-
   window.dataLayer = window.dataLayer || [];
   window.gtag =
     window.gtag ||
